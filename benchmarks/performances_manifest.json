@@ -1,0 +1,352 @@
+[
+  {
+    "song": "Help Me",
+    "split": "dev",
+    "audio": "Harmonica_em_Bb/HelpMe/Helpme.wav",
+    "labels": "Harmonica_em_Bb/HelpMe/Helpmemidi.txt",
+    "audio_blob": "7a9ab9ef725bfe0bec189389261332d94fb3433e",
+    "labels_blob": "483964015e4a51aefd3c246c0fd6a5639c83950b"
+  },
+  {
+    "song": "The Hucklebuck",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/Hucklebuckintro1/hucklebuckintro1.wav",
+    "labels": "Harmonica_em_Bb/Hucklebuckintro1/hucklebuckintro1midi.txt",
+    "audio_blob": "05176fd9ad28c33d2466ebf10567249d1f793563",
+    "labels_blob": "9f8ae0540f8735c52aba02aa016abb185d84a4e6"
+  },
+  {
+    "song": "The Hucklebuck",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/Hucklebuckintro2/hucklebuckintro2.wav",
+    "labels": "Harmonica_em_Bb/Hucklebuckintro2/hucklebuckintro2midi.txt",
+    "audio_blob": "60b29b82740ab6064a0362d43aac906b654a6fdf",
+    "labels_blob": "ea3dd784f79e1183e33472fd7cc6d10decba9598"
+  },
+  {
+    "song": "I Feel Like Jumping",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/IFeelLikeJumpingpt1/ifeellikejumppt1.wav",
+    "labels": "Harmonica_em_Bb/IFeelLikeJumpingpt1/ifeellikejumppt1midi.txt",
+    "audio_blob": "afd86e807b981d706cbfdda03bd097585b22bc62",
+    "labels_blob": "279028127401349cfa964d65881169be08b5ae65"
+  },
+  {
+    "song": "I Feel Like Jumping",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/IFeelLikeJumpingpt2/IFeelLikeJumpingpt2.wav",
+    "labels": "Harmonica_em_Bb/IFeelLikeJumpingpt2/IFeelLikeJumpingpt2midi.txt",
+    "audio_blob": "4c44800ac77a2c1ba45e9be43d0658ce79f5ff96",
+    "labels_blob": "f8c9f44a58e618d0bcbba57a9942b33c77d028c6"
+  },
+  {
+    "song": "Rocket 88",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/Rocket88/Rocket88.wav",
+    "labels": "Harmonica_em_Bb/Rocket88/Rocket88midi.txt",
+    "audio_blob": "05125985f5757e3cb89ba3addd24a39f58f69aad",
+    "labels_blob": "99fbbd754f8d29fe2bb2e541519cd78b5ac96f4b"
+  },
+  {
+    "song": "Sugar Sweet",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/SugarSweet/SugarSweet.wav",
+    "labels": "Harmonica_em_Bb/SugarSweet/Sugar Sweetmidi.txt",
+    "audio_blob": "14106d97da90a2e31e5db8360426bb3d645c331b",
+    "labels_blob": "b6fbaa1559d5f9760517e02d6bc6c2dba190c485"
+  },
+  {
+    "song": "The Split",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/TheSplitChorus1/TheSplitChorus1.wav",
+    "labels": "Harmonica_em_Bb/TheSplitChorus1/TheSplitChorus1midi.txt",
+    "audio_blob": "107c15f1bd84b22b155133d93e1a4fcf1ef1a112",
+    "labels_blob": "782abf9d8fd970b4c6c2c9fee504e59d3d13af0e"
+  },
+  {
+    "song": "The Split",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/TheSplitChorus1turn/TheSplitChorus1turn.wav",
+    "labels": "Harmonica_em_Bb/TheSplitChorus1turn/TheSplitChorus1turnmidi.txt",
+    "audio_blob": "137f48206e5ae21b18da38cd360ff0c4af614456",
+    "labels_blob": "2c3046a1bdb26aa5ae68c4c0a9e20c13f60ed86e"
+  },
+  {
+    "song": "It Takes Three",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/it takes threepart3/ittakesthreepart3.wav",
+    "labels": "Harmonica_em_Bb/it takes threepart3/ittakesthreepart3midi.txt",
+    "audio_blob": "5d779740fba0bea55608c447b33bdc9bab098ee3",
+    "labels_blob": "4dcdf8cfa65e7e1b3a9112eeec9634f6bc7d254c"
+  },
+  {
+    "song": "It Takes Three",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/ittakesthreepart1/ittakesthreepart 1.wav",
+    "labels": "Harmonica_em_Bb/ittakesthreepart1/ittakesthreepart 1midi.txt",
+    "audio_blob": "34c5373acf57c26bff5c1423baea17703ee902c0",
+    "labels_blob": "e886da7851d2ebda265fbfab065d013b7b2df747"
+  },
+  {
+    "song": "It Takes Three",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/ittakesthreepart2/ittakesthreepart2.wav",
+    "labels": "Harmonica_em_Bb/ittakesthreepart2/ittakesthreepart2midi.txt",
+    "audio_blob": "a45119c938b5070b06dc0ff6e08787f685a321ea",
+    "labels_blob": "4664bb99db58a3de3d8eb4e5ff419d9e9e0d1ce5"
+  },
+  {
+    "song": "My Baby",
+    "split": "holdout",
+    "audio": "Harmonica_em_Bb/mybabypart1/mybabypart1.wav",
+    "labels": "Harmonica_em_Bb/mybabypart1/mybabypart1midi.txt",
+    "audio_blob": "78c294e193cf357f2388549860f42fc7d4dbba62",
+    "labels_blob": "271547d5632fce5f180bddffffa0445365e44bc8"
+  },
+  {
+    "song": "Four-note chords",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Acordes4notas/acordes4notas.wav",
+    "labels": "Harmonica_em_C/Acordes4notas/acordes4notasmidi.txt",
+    "audio_blob": "96f23b08729a19951de7b605f4871714653042ef",
+    "labels_blob": "bc2771452f7be0050e4074ba70b1f0cf99db47cf"
+  },
+  {
+    "song": "Hey Jude",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Heyjude1/heyjudeG01.wav",
+    "labels": "Annotaded/Harmonica_em_C/Heyjude1/heyjudeG01Hz.txt",
+    "audio_blob": "70bf13e8474a4f2b154c6826dca668bf6aa9a1ff",
+    "labels_blob": "e8031de0803b8324b08c117b4c1d68685c6ff19b",
+    "label_format": "start_end_hz"
+  },
+  {
+    "song": "Hey Jude",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Heyjude2/heyjudeG02.wav",
+    "labels": "Annotaded/Harmonica_em_C/Heyjude2/heyjudeG02Hz.txt",
+    "audio_blob": "ffc670464240f730a5ae39b712a1ae15c81d8769",
+    "labels_blob": "2e3fd08c43d10d3600e0561971f16a5d306aeb48",
+    "label_format": "start_end_hz"
+  },
+  {
+    "song": "Hey Jude",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Heyjude3/heyjudeG03.wav",
+    "labels": "Annotaded/Harmonica_em_C/Heyjude3/heyjudeG03Hz.txt",
+    "audio_blob": "ac4782db1ad16f845522ccaa39e96c437cd6409d",
+    "labels_blob": "834b9d471d16fd659bb08e8f1b383adf22d16856",
+    "label_format": "start_end_hz"
+  },
+  {
+    "song": "Hey Jude",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Heyjude4/heyjudeG04.wav",
+    "labels": "Annotaded/Harmonica_em_C/Heyjude4/heyjudeG04Hz.txt",
+    "audio_blob": "951f155e1dfd592ff1497c8b43a8e094f86c69f0",
+    "labels_blob": "38a44a3f803523ce440a365120738418975d5dfa",
+    "label_format": "start_end_hz"
+  },
+  {
+    "song": "Hey Jude",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Heyjude5/heyjudeG05.wav",
+    "labels": "Annotaded/Harmonica_em_C/Heyjude5/heyjudeG05Hz.txt",
+    "audio_blob": "3dab78d482431edc14ae92d4049da1ef7795d606",
+    "labels_blob": "4c91842a2707c0d89f08618b3d3d4991985ab2c0",
+    "label_format": "start_end_hz"
+  },
+  {
+    "song": "Intervals",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/Intervalos/intervalos.wav",
+    "labels": "Harmonica_em_C/Intervalos/intervalosmidi.txt",
+    "audio_blob": "fb4218c7b2132cb9d131e96cee45e95de1b0a7c0",
+    "labels_blob": "11842f527bc961f4aeb324932365defc9ef62a6a"
+  },
+  {
+    "song": "Oh! Susanna",
+    "split": "dev",
+    "audio": "Harmonica_em_C/OhSusana1/OhSusanapart1GaitaC.wav",
+    "labels": "Harmonica_em_C/OhSusana1/OhSusanapart1GaitaCmidi.txt",
+    "audio_blob": "8cc752e64e5eb1bc6687ba5b59501b03e6c29ceb",
+    "labels_blob": "231fc6819c3382212d84b43df7b0510ab6018a4d"
+  },
+  {
+    "song": "Oh! Susanna",
+    "split": "dev",
+    "audio": "Harmonica_em_C/OhSusana2/OhSusanapart2GaitaC.wav",
+    "labels": "Annotaded/Harmonica_em_C/OhSusana2/OhSusanapart2GaitaCHz.txt",
+    "audio_blob": "383b870d825621e2fade9a756a70705e6b47bf54",
+    "labels_blob": "136395ade5c4256daadfab450e393b3b9e126718",
+    "label_format": "start_hz_end"
+  },
+  {
+    "song": "Bye Bye Bird",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/byebyebirdpart1/byebyebirdpart1.wav",
+    "labels": "Harmonica_em_C/byebyebirdpart1/byebyebirdpart1midi.txt",
+    "audio_blob": "1394129667d0f4af555f83c350f75ccae240762a",
+    "labels_blob": "659bf222922048c9c307f65f078dc376a094a23a"
+  },
+  {
+    "song": "Bye Bye Bird",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/byebyebirdpart3/byebyebirdpart3.wav",
+    "labels": "Harmonica_em_C/byebyebirdpart3/byebyebirdpart3midi.txt",
+    "audio_blob": "84474d41ce859a72c149d4136e9455d8dc6ed990",
+    "labels_blob": "3985bbc85d14185baa435cb9961756a383ddf7c0"
+  },
+  {
+    "song": "Canceriano Sem Lar",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/cancerianosemlarsolo/cancerianosemlarsolo1.wav",
+    "labels": "Harmonica_em_C/cancerianosemlarsolo/cancerianosemlarsolo1midi.txt",
+    "audio_blob": "c49e7320695265900a42a4eee8faabc71e21c85c",
+    "labels_blob": "c2ca7f3f7b7cee2b0b706d83124e6897661eb921"
+  },
+  {
+    "song": "Chord arpeggio",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/chordappergio/chordarpeggio.wav",
+    "labels": "Harmonica_em_C/chordappergio/chordarpeggiomidi.txt",
+    "audio_blob": "a9570679c7b3b5f362cc512cfde930d97f25dc21",
+    "labels_blob": "74a3eebe7228ad7cac523a62cc7a7ed11cdb41dd"
+  },
+  {
+    "song": "Route 66",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/route66/route66intro.wav",
+    "labels": "Harmonica_em_C/route66/route66intromidi.txt",
+    "audio_blob": "34ae2b8da011052b46741799f3c5439955d909c6",
+    "labels_blob": "203b6357a4afe0ac02da12ce4ba303b13950f324"
+  },
+  {
+    "song": "When the Saints Go Marching In",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/whenthesaintsgoingmarchinginpt1/whenthesaintsgoingmarchinginHarmonicC2posGpart1.wav",
+    "labels": "Harmonica_em_C/whenthesaintsgoingmarchinginpt1/whenthesaintsgoingmarchinginHarmonicC2posGpart1midi.txt",
+    "audio_blob": "2f13a16c8064fe73d8f55b0f5d685c50385eb612",
+    "labels_blob": "e67b4bef7f1df3716fe16f1bc0cbc1a07cf54361"
+  },
+  {
+    "song": "When the Saints Go Marching In",
+    "split": "holdout",
+    "audio": "Harmonica_em_C/whenthesaintsgoingmarchinginpt2/whenthesaintsgoingmarchinginHarmonicC2posGpart2.wav",
+    "labels": "Harmonica_em_C/whenthesaintsgoingmarchinginpt2/whenthesaintsgoingmarchinginHarmonicC2posGpart2midi.txt",
+    "audio_blob": "82fbde1b1ffea04661303c2cb678d881d7f9a884",
+    "labels_blob": "03f4b4311c6dff2614aad13d610e92355a8c837a"
+  },
+  {
+    "song": "Acting Crazy",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/Actingcrazyfinal/actingcrazyfinal.wav",
+    "labels": "Harmonica_em_G/Actingcrazyfinal/actingcrazyfinalmidi.txt",
+    "audio_blob": "f3c05bd65de4a8d8b3559d60c997f3f1164f3dc7",
+    "labels_blob": "4984b54375babdd55645bb4aa262eae3c5c5ad74"
+  },
+  {
+    "song": "Acting Crazy",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/Actingcrazysolo1/actingcrazysolo1.wav",
+    "labels": "Harmonica_em_G/Actingcrazysolo1/actingcrazysolo1midi.txt",
+    "audio_blob": "c47b20184ae8b013266637cddce0710daf751371",
+    "labels_blob": "720f153c0cd4b5a91d6ca94823eb908087402e3b"
+  },
+  {
+    "song": "Gary’s Blues",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/Garysblues1stchorus1/garysblues1stchorus1.wav",
+    "labels": "Harmonica_em_G/Garysblues1stchorus1/garysblues1stchorus1midi.txt",
+    "audio_blob": "d31d9dbab3a6005b07861e862a290969fed2f3eb",
+    "labels_blob": "3491a2d727d7209bacf17484f63d3f0e5b954d65"
+  },
+  {
+    "song": "Ode to Joy",
+    "split": "dev",
+    "audio": "Harmonica_em_G/Odetojoypart1HarmonicaG/OdetojoyHarmonicaG1pospart1.wav",
+    "labels": "Harmonica_em_G/Odetojoypart1HarmonicaG/OdetojoyHarmonicaG1pospart1midi.txt",
+    "audio_blob": "2c96db88543eba7d08d4b4f18181aa856e23dd1c",
+    "labels_blob": "59a615f5bd4f6897d9934bed17185c87487df789"
+  },
+  {
+    "song": "Ode to Joy",
+    "split": "dev",
+    "audio": "Harmonica_em_G/Odetojoypart3HarmonicaG/OdetojoyHarmonicaG1pospart3.wav",
+    "labels": "Harmonica_em_G/Odetojoypart3HarmonicaG/OdetojoyHarmonicaG1pospart3midi.txt",
+    "audio_blob": "ca15052fcb6d10c48f94276cd6b12e2853497778",
+    "labels_blob": "be3547a62d6ada04a20bad395a4cc9a86ad5bbee"
+  },
+  {
+    "song": "All My Love in Vain",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/allmyloveinvain/allmyloveinvainG.wav",
+    "labels": "Harmonica_em_G/allmyloveinvain/allmyloveinvainGmidi.txt",
+    "audio_blob": "77f06eb9cbe0657fbfa2246727e3d6ebb82d558d",
+    "labels_blob": "ce2daf8b811710936b20bc01d04524d3915bac3f"
+  },
+  {
+    "song": "Gary’s Blues",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/garysblues1stchorus2/garysblues1stchorus2.wav",
+    "labels": "Harmonica_em_G/garysblues1stchorus2/garysblues1stchorus2midi.txt",
+    "audio_blob": "dc75b29fbf70f45dd18c05ba1c67bf9da5548bd0",
+    "labels_blob": "20cb42728d49d552dde590b2eccff0cc9b461562"
+  },
+  {
+    "song": "Gary’s Blues",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/garysblues2ndchorus1/garysblues2ndchorus1.wav",
+    "labels": "Harmonica_em_G/garysblues2ndchorus1/garysblues2ndchorus1midi.txt",
+    "audio_blob": "164906c4783f34d30191baec8b668191b4a7bf39",
+    "labels_blob": "12c4fa41920e5ef8f3ba5093c3ae23313e8a48fa"
+  },
+  {
+    "song": "Good Morning Schoolgirl",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/goodmorningschoolgirl/goodmorningschoolgirl.wav",
+    "labels": "Harmonica_em_G/goodmorningschoolgirl/goodmorningschoolgirlmidi.txt",
+    "audio_blob": "4cb071ab9e8cbcaa523a47319436767ecb80de26",
+    "labels_blob": "1b646f83116936ac0a4f9b4d760a6b5e1614c152"
+  },
+  {
+    "song": "Harmonica solo 04",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/harmonicasolo042/harmonicasolo042.wav",
+    "labels": "Harmonica_em_G/harmonicasolo042/harmonicasolo042midi.txt",
+    "audio_blob": "ae1b7c9ed35e0a6a15d7fb2e7828e268d01819ea",
+    "labels_blob": "ae7c0ac5d86bb13acf5a10add5da1aa8ad8bb8cc"
+  },
+  {
+    "song": "Harmonica solo 04",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/harmonicasolo043/harmonicasolo043.wav",
+    "labels": "Harmonica_em_G/harmonicasolo043/harmonicasolo043midi.txt",
+    "audio_blob": "2c46904cf712eab9677d918aa2eed4c77f32d282",
+    "labels_blob": "8a0559421877e4b62db2ef112b40fd98b9289abc"
+  },
+  {
+    "song": "Honest I Do",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/honestido/honestido.wav",
+    "labels": "Harmonica_em_G/honestido/honestidomidi.txt",
+    "audio_blob": "e139365d20e5f0e5854313c8e3070c285df43a2e",
+    "labels_blob": "25d6fe08c191532b1bfa434850ef6c9cf7b22ddf"
+  },
+  {
+    "song": "Honest I Do",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/honestido2/honestido2.wav",
+    "labels": "Harmonica_em_G/honestido2/honestido2midi.txt",
+    "audio_blob": "805d97f4ce580394b7d2b5aec55942e1e274adbd",
+    "labels_blob": "2efc7a5271ff4996037570b7fc683b8432783543"
+  },
+  {
+    "song": "Peach Three",
+    "split": "holdout",
+    "audio": "Harmonica_em_G/peachthreeintro1/peachthreeintro1.wav",
+    "labels": "Harmonica_em_G/peachthreeintro1/peachthreeintro1midi.txt",
+    "audio_blob": "2fd7a63c3aec1f78a158d8532873644c6a069cc8",
+    "labels_blob": "44b05a9a9633eef37a16b65ec630d6313d723534"
+  }
+]

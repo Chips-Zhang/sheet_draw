@@ -53,6 +53,9 @@ class TranscriptionConfig:
     harmonica_optimization: bool = False
     harmonica_type: str = "chromatic"  # 'chromatic', 'diatonic'
     harmonica_key: str = "C"
+    engine: str = "monophonic"  # "legacy" retains onset-first segmentation
+    separation_target: str = "vocals"
+    neural_profile: str = "selective"  # applied only to the instrument-constrained duet
 
 
 class MusicTranscriber:
@@ -98,51 +101,58 @@ class MusicTranscriber:
         Returns:
             扒谱结果
         """
+        audio = np.asarray(audio)
+        rhythm_audio = audio.mean(axis=1) if audio.ndim == 2 else audio
         print("🎵 开始扒谱...")
-        
-        # Step 0: 人声分离 (可选)
         if self.config.enable_vocal_separation:
-            print("  Step 0/6: 人声分离...")
-            from .vocal_separation import VocalSeparator
-            separator = VocalSeparator(
-                sample_rate=self.config.sample_rate,
-                method=self.config.vocal_separation_method
-            )
-            audio = separator.extract_vocal(audio)
-            print("    人声分离完成")
-        
-        # Step 1: Onset检测 (找到每个音符的开始)
-        print("  Step 1/6: 检测音符分割点...")
-        onsets = self._detect_onsets(audio)
-        print(f"    检测到 {len(onsets)} 个音符")
-        
-        # Step 2: 节奏分析
-        print("  Step 2/6: 分析节奏...")
-        rhythm_info = self.beat_tracker.analyze(audio)
-        bpm = rhythm_info["bpm"]
-        beats = rhythm_info["beats"]
-        print(f"    BPM: {bpm}")
-        print(f"    检测到 {len(beats)} 个节拍")
-        
-        # Step 3: 音高检测
-        print("  Step 3/6: 检测音高...")
-        notes = self._detect_notes(audio, onsets)
-        print(f"    成功检测 {len(notes)} 个音符")
-        
+            from .vocal_separation import preprocess_for_transcription
+            audio = preprocess_for_transcription(audio, self.config.sample_rate,
+                                                 self.config.vocal_separation_method,
+                                                 self.config.separation_target)
+        elif audio.ndim == 2:
+            audio = audio.mean(axis=1)
+
+        if self.config.engine == "monophonic":
+            from .monophonic import track_notes
+            notes = track_notes(audio, self.config.sample_rate,
+                                self.config.min_note_duration, self.config.pitch_smoothing)
+        elif self.config.engine == "basic-pitch":
+            from .basic_pitch_backend import predict_melody
+            notes = predict_melody(audio, self.config.sample_rate)
+        elif self.config.engine == "basic-pitch-poly":
+            from .basic_pitch_backend import predict_notes
+            notes = predict_notes(audio, self.config.sample_rate)
+        elif self.config.engine == "basic-pitch-duet":
+            from .basic_pitch_backend import predict_harmonica_notes, select_duet
+            instrument, key = self.config.harmonica_type, self.config.harmonica_key
+            raw = predict_harmonica_notes(audio, self.config.sample_rate, instrument, key,
+                                          self.config.neural_profile)
+            notes = select_duet(raw, instrument, key)
+        elif self.config.engine == "legacy":
+            notes = self._detect_notes(audio, self._detect_onsets(audio))
+        else:
+            raise ValueError(f"未知扒谱引擎: {self.config.engine}")
+
+        if len(audio) >= 2048:
+            rhythm_info = self.beat_tracker.analyze(rhythm_audio)
+            bpm, beats = rhythm_info["bpm"], rhythm_info["beats"]
+        else:
+            bpm, beats = 120., []
+
         # Step 4: 调性检测
-        print("  Step 4/6: 分析调性...")
+        print("  分析调性...")
         key_info = self._detect_key(notes)
         key = key_info["key"]
         print(f"    调性: {key}")
         
         # Step 5: 量化和优化
-        print("  Step 5/6: 量化音符...")
         if self.config.enable_quantization:
+            print("  量化音符...")
             notes = quantize_notes(notes, bpm, self.config.quantization)
         
         # Step 6: 口琴优化 (可选)
         if self.config.harmonica_optimization:
-            print("  Step 6/6: 口琴优化...")
+            print("  检查口琴孔位...")
             from .harmonica import HarmonicaScoreGenerator, create_chromatic_harmonica, create_diatonic_harmonica
             if self.config.harmonica_type == "chromatic":
                 harp = create_chromatic_harmonica(self.config.harmonica_key)
@@ -180,10 +190,6 @@ class MusicTranscriber:
             self._update_modules()
         except Exception as e:
             raise RuntimeError(f"无法读取音频文件: {e}")
-        
-        # 转换为单声道
-        if audio.ndim > 1:
-            audio = audio.mean(axis=1)
         
         return self.transcribe(audio)
     

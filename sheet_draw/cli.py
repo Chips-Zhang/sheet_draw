@@ -71,8 +71,8 @@ def main():
     transcribe_parser.add_argument("input", help="输入音频文件路径")
     transcribe_parser.add_argument(
         "-o", "--output",
-        choices=["jianpu", "midi", "json", "tab"],
-        default="jianpu",
+        choices=["jianpu", "midi", "json", "tab", "abc"],
+        default=None,
         help="输出格式 (默认: jianpu, tab=口琴TAB谱)"
     )
     transcribe_parser.add_argument(
@@ -98,6 +98,12 @@ def main():
         help="最大BPM (默认: 180)"
     )
     
+    transcribe_parser.add_argument("--engine", choices=["monophonic", "basic-pitch", "basic-pitch-poly", "basic-pitch-duet", "legacy"],
+                                   default="monophonic", help="音符识别引擎")
+
+    transcribe_parser.add_argument("--meter", type=int, choices=(2, 3, 4), default=4)
+    transcribe_parser.add_argument("--subdivision", choices=("auto", "straight", "triplet"), default="auto")
+
     # 人声分离选项
     transcribe_parser.add_argument(
         "--separate-vocal",
@@ -106,11 +112,14 @@ def main():
     )
     transcribe_parser.add_argument(
         "--separation-method",
-        choices=["hpss", "spectral", "spleeter"],
+        choices=["hpss", "spectral", "repet", "center", "spleeter", "demucs"],
         default="hpss",
         help="人声分离方法 (默认: hpss)"
     )
     
+    transcribe_parser.add_argument("--separation-target", choices=["vocals", "accompaniment", "other"],
+                                   default="vocals", help="分离后用于转谱的音轨（other 需要 Demucs）")
+
     # 口琴选项
     transcribe_parser.add_argument(
         "--harmonica",
@@ -154,6 +163,12 @@ def main():
         parser.print_help()
         sys.exit(0)
     
+    if args.command == "transcribe":
+        poly = args.engine in ("basic-pitch-duet", "basic-pitch-poly")
+        args.output = args.output or ("abc" if poly else "jianpu")
+        if poly and args.output in ("jianpu", "tab"):
+            parser.error("多音和双音请用 -o abc 输出组合谱，或选择 midi / json。")
+
     # 处理 install-spleeter 命令 (不需要输入文件)
     if args.command == "install-spleeter":
         handle_install_spleeter(args)
@@ -260,10 +275,13 @@ def handle_transcribe(args):
         print()
         
         config = TranscriptionConfig(
+            engine=args.engine,
+            enable_quantization=args.output != "abc" and not (args.output == "json" and args.engine in ("basic-pitch-duet", "basic-pitch-poly")),
             tempo_min=args.tempo_min,
             tempo_max=args.tempo_max,
             enable_vocal_separation=args.separate_vocal,
             vocal_separation_method=args.separation_method,
+            separation_target=args.separation_target,
             harmonica_optimization=args.harmonica,
             harmonica_type=args.harmonica_type,
             harmonica_key=args.harmonica_key
@@ -282,6 +300,14 @@ def handle_transcribe(args):
                     f.write(jianpu_text)
                 print(f"\n简谱已保存到: {args.output_file}")
         
+        elif args.output == "abc":
+            from .notation import score_abc
+            abc = score_abc(result, args.harmonica_type, args.meter, result.bpm,
+                            args.harmonica_key, args.subdivision, result.beats)
+            if args.output_file:
+                Path(args.output_file).write_text(abc, encoding="utf-8")
+            else:
+                print(abc)
         elif args.output == "midi":
             output_path = args.output_file or args.input.rsplit('.', 1)[0] + ".mid"
             result.to_midi(output_path)

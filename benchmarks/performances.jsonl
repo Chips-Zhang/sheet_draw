@@ -1,0 +1,12 @@
+{"clip": "OhSusanapart1GaitaC", "engine": "legacy", "reference": 29, "predicted": 4, "onset_f1": 0.0, "offset_f1": 0.0}
+{"clip": "OhSusanapart1GaitaC", "engine": "monophonic", "reference": 29, "predicted": 31, "onset_f1": 0.6667, "offset_f1": 0.6667}
+{"clip": "OhSusanapart1GaitaC", "engine": "basic-pitch", "reference": 29, "predicted": 40, "onset_f1": 0.8406, "offset_f1": 0.7536}
+{"clip": "OhSusanapart1GaitaC", "engine": "basic-pitch-solo", "reference": 29, "predicted": 29, "onset_f1": 0.931, "offset_f1": 0.8276}
+{"clip": "OdetojoyHarmonicaG1pospart1", "engine": "legacy", "reference": 25, "predicted": 1, "onset_f1": 0.0, "offset_f1": 0.0}
+{"clip": "OdetojoyHarmonicaG1pospart1", "engine": "monophonic", "reference": 25, "predicted": 22, "onset_f1": 0.1702, "offset_f1": 0.0851}
+{"clip": "OdetojoyHarmonicaG1pospart1", "engine": "basic-pitch", "reference": 25, "predicted": 65, "onset_f1": 0.2667, "offset_f1": 0.0889}
+{"clip": "OdetojoyHarmonicaG1pospart1", "engine": "basic-pitch-solo", "reference": 25, "predicted": 31, "onset_f1": 0.1429, "offset_f1": 0.0}
+{"clip": "Helpme", "engine": "legacy", "reference": 32, "predicted": 1, "onset_f1": 0.0, "offset_f1": 0.0}
+{"clip": "Helpme", "engine": "monophonic", "reference": 32, "predicted": 16, "onset_f1": 0.1667, "offset_f1": 0.0833}
+{"clip": "Helpme", "engine": "basic-pitch", "reference": 32, "predicted": 22, "onset_f1": 0.4074, "offset_f1": 0.2593}
+{"clip": "Helpme", "engine": "basic-pitch-solo", "reference": 32, "predicted": 14, "onset_f1": 0.3043, "offset_f1": 0.1304}

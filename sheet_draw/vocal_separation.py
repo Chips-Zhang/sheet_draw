@@ -1,334 +1,215 @@
-"""
-人声分离 (Vocal Separation) - 从伴奏中提取人声或从混音中分离人声
-"""
+"""Source separation for transcription, preserving sample rate and time origin."""
+
+from functools import lru_cache
+from math import gcd
 
 import numpy as np
-from typing import Tuple, Optional
-import scipy.signal
+from scipy import signal
 from scipy.ndimage import median_filter
+from scipy.spatial import cKDTree
+
+
+def _mono(audio):
+    return audio.mean(axis=1) if audio.ndim == 2 else audio
+
+
+def _stereo(audio):
+    if audio.ndim == 2 and audio.shape[1] == 2:
+        return audio
+    return np.repeat(_mono(audio)[:, None], 2, axis=1)
+
+
+def _resample(audio, original, target):
+    if original == target:
+        return audio
+    divisor = gcd(original, target)
+    return signal.resample_poly(audio, target // divisor, original // divisor, axis=0)
+
+
+def _restore(audio, model_rate, rate, length):
+    data = _resample(audio, model_rate, rate)[:length]
+    if len(data) < length:
+        data = np.pad(data, [(0, length - len(data))] + [(0, 0)] * (data.ndim - 1))
+    return data
+
+
+def _repeating_mask(magnitude, sr, hop):
+    """Estimate recurring accompaniment from distant, spectrally similar frames."""
+    count = magnitude.shape[1]
+    # Pool the spectrum to search by spectral shape, independent of loudness.
+    features = np.stack([band.mean(axis=0) for band in np.array_split(
+        magnitude, min(48, magnitude.shape[0]))], axis=1)
+    features = np.sqrt(features)
+    features /= np.maximum(np.linalg.norm(features, axis=1, keepdims=True), 1e-8)
+    tree = cKDTree(features)
+    exclusion = max(1, round(.6 * sr / hop))
+    neighbours = min(count, 2 * exclusion + 9)
+    mask = np.ones_like(magnitude)
+    for start in range(0, count, 256):
+        stop = min(start + 256, count)
+        _, indices = tree.query(features[start:stop], k=neighbours)
+        for i, row in enumerate(np.asarray(indices).reshape(stop - start, neighbours), start):
+            distant = row[np.abs(row - i) > exclusion][:8]
+            if len(distant) < 3:
+                continue
+            background = np.median(magnitude[:, distant], axis=1)
+            foreground = np.maximum(magnitude[:, i] - background, 0)
+            mask[:, i] = foreground**2 / (foreground**2 + background**2 + 1e-16)
+    return mask
 
 
 class VocalSeparator:
-    """人声分离器"""
-    
-    def __init__(
-        self,
-        sample_rate: int = 44100,
-        n_fft: int = 2048,
-        hop_length: int = 512,
-        method: str = "spectral_subtraction"
-    ):
-        """
-        初始化人声分离器
-        
-        Args:
-            sample_rate: 采样率
-            n_fft: FFT大小
-            hop_length: 帧移
-            method: 分离方法 ('spectral_subtraction', 'hpss', 'median_filtering')
-        """
+    """Foreground/background estimates; classical methods do not identify singers."""
+
+    def __init__(self, sample_rate=44100, n_fft=2048, hop_length=512,
+                 method="spectral_subtraction"):
         self.sample_rate = sample_rate
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.method = method
-    
-    def separate(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        分离人声和伴奏
-        
-        Args:
-            audio: 输入音频 (混音)
-            
-        Returns:
-            (vocal, accompaniment) - 人声和伴奏
-        """
-        if self.method == "spectral_subtraction":
-            return self._spectral_subtraction(audio)
+
+    def separate(self, audio):
+        data = np.asarray(audio, dtype=np.float32)
+        if self.method in ("demucs", "spleeter"):
+            stems = _neural_stems(data, self.sample_rate, self.method)
+            return stems["vocals"], stems["accompaniment"]
+        if self.method == "center" and (data.ndim != 2 or data.shape[1] != 2):
+            raise ValueError("居中声像提取需要双声道音频")
+        mixture = _mono(data)
+        if not len(mixture):
+            return mixture, mixture.copy()
+        rate = min(self.sample_rate, 22050)
+        audio = _resample(mixture, self.sample_rate, rate)
+        # The same padded frame grid is used for both spectra and inversion.
+        def spectrum(x):
+            x = np.pad(x, (0, max(0, self.n_fft - len(x))))
+            return signal.stft(x, nperseg=self.n_fft, noverlap=self.n_fft - self.hop_length)[2]
+        spec = spectrum(audio)
+        mag = np.abs(spec)
+        if self.method in ("spectral", "spectral_subtraction"):
+            # Remove the stationary spectral floor while retaining short-lived
+            # harmonics. The gain floor limits artefacts on sustained lead notes.
+            stationary = np.percentile(mag, 20, axis=1, keepdims=True).astype(mag.dtype)
+            mask = np.maximum(.04, 1. - stationary / (mag + 1e-10))
         elif self.method == "hpss":
-            return self._hpss_separation(audio)
+            harmonic = median_filter(mag, size=(1, 15))
+            transient = median_filter(mag, size=(15, 1))
+            mask = harmonic**2 / (harmonic**2 + transient**2 + 1e-16)
+        elif self.method == "center":
+            side = _resample((data[:, 0] - data[:, 1]) * .5, self.sample_rate, rate)
+            # Identical L/R has zero side. A hard-panned instrument has equal mid/side.
+            side_power = np.abs(spectrum(side))**2
+            mask = np.maximum(0., 1. - side_power / (mag**2 + 1e-16))
+        elif self.method == "repet":
+            mask = _repeating_mask(mag, rate, self.hop_length)
         elif self.method == "median_filtering":
-            return self._median_filtering(audio)
+            background = median_filter(mag, size=(15, 5))
+            mask = np.maximum(0, mag - .8 * background) / (mag + 1e-10)
         else:
-            raise ValueError(f"Unknown method: {self.method}")
-    
-    def extract_vocal(self, audio: np.ndarray) -> np.ndarray:
-        """只提取人声"""
-        vocal, _ = self.separate(audio)
-        return vocal
-    
-    def extract_accompaniment(self, audio: np.ndarray) -> np.ndarray:
-        """只提取伴奏"""
-        _, accompaniment = self.separate(audio)
-        return accompaniment
-    
-    def _spectral_subtraction(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        频谱减法 - 基于人声和伴奏在频谱上的差异
-        
-        原理: 人声通常集中在200Hz-4kHz，伴奏有更宽的频谱
-        """
-        # STFT
-        D = self._stft(audio)
-        magnitude = np.abs(D)
-        phase = np.angle(D)
-        
-        # 创建人声掩码
-        # 人声主要集中在中频 (200Hz - 4000Hz)
-        freqs = np.fft.rfftfreq(self.n_fft, 1/self.sample_rate)
-        
-        vocal_mask = np.zeros_like(magnitude)
-        accompaniment_mask = np.ones_like(magnitude)
-        
-        # 人声频段
-        vocal_freq_min = 200
-        vocal_freq_max = 4000
-        
-        vocal_freq_indices = (freqs >= vocal_freq_min) & (freqs <= vocal_freq_max)
-        vocal_mask[vocal_freq_indices, :] = 1
-        accompaniment_mask[vocal_freq_indices, :] = 0.3  # 伴奏在这些频段较弱
-        
-        # 应用掩码
-        vocal_mag = magnitude * vocal_mask
-        accompaniment_mag = magnitude * accompaniment_mask
-        
-        # ISTFT
-        vocal = self._istft(vocal_mag * np.exp(1j * phase))
-        accompaniment = self._istft(accompaniment_mag * np.exp(1j * phase))
-        
-        return vocal, accompaniment
-    
-    def _hpss_separation(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        HPSS (Harmonic-Percussive Source Separation)
-        
-        将音频分离为谐波成分(人声/旋律)和打击乐成分(鼓点)
-        """
-        # STFT
-        D = self._stft(audio)
-        magnitude = np.abs(D)
-        
-        # 中值滤波分离
-        # 沿时间轴滤波 -> 提取谐波成分
-        harmonic = median_filter(magnitude, size=(1, 15), mode='reflect')
-        
-        # 沿频率轴滤波 -> 提取打击乐成分
-        percussive = median_filter(magnitude, size=(15, 1), mode='reflect')
-        
-        # 创建软掩码
-        mask_harmonic = harmonic / (harmonic + percussive + 1e-10)
-        mask_percussive = percussive / (harmonic + percussive + 1e-10)
-        
-        # 应用掩码
-        phase = np.angle(D)
-        harmonic_audio = self._istft(magnitude * mask_harmonic * np.exp(1j * phase))
-        percussive_audio = self._istft(magnitude * mask_percussive * np.exp(1j * phase))
-        
-        # 人声主要是谐波成分，但包含部分打击乐
-        # 简单起见，将谐波成分视为人声
-        vocal = harmonic_audio * 0.8 + percussive_audio * 0.2
-        accompaniment = percussive_audio * 0.8 + harmonic_audio * 0.2
-        
-        return vocal, accompaniment
-    
-    def _median_filtering(self, audio: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        基于中值滤波的人声分离
-        
-        使用更激进的滤波来分离前景(人声)和背景(伴奏)
-        """
-        # STFT
-        D = self._stft(audio)
-        magnitude = np.abs(D)
-        phase = np.angle(D)
-        
-        # 背景估计 - 使用中值滤波
-        background = median_filter(magnitude, size=(15, 5), mode='reflect')
-        
-        # 前景掩码
-        mask = np.maximum(0, magnitude - background * 0.8)
-        mask = mask / (magnitude + 1e-10)
-        
-        # 平滑掩码
-        mask = median_filter(mask, size=(3, 3), mode='reflect')
-        
-        # 应用掩码
-        vocal_mag = magnitude * mask
-        accompaniment_mag = magnitude * (1 - mask)
-        
-        vocal = self._istft(vocal_mag * np.exp(1j * phase))
-        accompaniment = self._istft(accompaniment_mag * np.exp(1j * phase))
-        
-        return vocal, accompaniment
-    
-    def _stft(self, audio: np.ndarray) -> np.ndarray:
-        """短时傅里叶变换"""
-        return scipy.signal.stft(
-            audio,
-            fs=self.sample_rate,
-            nperseg=self.n_fft,
-            noverlap=self.n_fft - self.hop_length,
-            boundary='constant'
-        )[2]
-    
-    def _istft(self, spectrogram: np.ndarray) -> np.ndarray:
-        """逆短时傅里叶变换"""
-        _, audio = scipy.signal.istft(
-            spectrogram,
-            fs=self.sample_rate,
-            nperseg=self.n_fft,
-            noverlap=self.n_fft - self.hop_length,
-            boundary=True
-        )
-        return audio
+            raise ValueError(f"未知分离方法：{self.method}")
+        _, lead = signal.istft(spec * mask, nperseg=self.n_fft,
+                               noverlap=self.n_fft - self.hop_length)
+        lead = _restore(lead[:len(audio)], rate, self.sample_rate, len(mixture))
+        return lead, mixture - lead
+
+    def extract_vocal(self, audio):
+        return self.separate(audio)[0]
+
+    def extract_accompaniment(self, audio):
+        return self.separate(audio)[1]
 
 
 class SpleeterWrapper:
-    """
-    Spleeter 包装器
-    
-    如果安装了 Spleeter，使用深度学习模型进行高质量人声分离
-    """
-    
-    def __init__(self, model: str = "2stems"):
-        """
-        初始化Spleeter包装器
-        
-        Args:
-            model: 模型类型 ('2stems' - 人声+伴奏, '4stems' - 人声+鼓+贝斯+其他)
-        """
+    def __init__(self, model="2stems"):
         self.model = model
-        self.separator = None
-        self._check_spleeter()
-    
-    def _check_spleeter(self):
-        """检查是否安装了Spleeter"""
         try:
             from spleeter.separator import Separator
-            self.separator = Separator(f'spleeter:{self.model}')
-            self.available = True
         except ImportError:
-            self.available = False
-            print("Warning: Spleeter not installed. Using fallback methods.")
-            print("Install Spleeter for better quality: pip install spleeter")
-    
-    def separate(self, audio: np.ndarray, sample_rate: int = 44100) -> dict:
-        """
-        使用Spleeter分离音轨
-        
-        Args:
-            audio: 输入音频
-            sample_rate: 采样率
-            
-        Returns:
-            分离后的音轨字典
-        """
+            self.separator = None
+        else:
+            self.separator = Separator(f"spleeter:{model}")
+        self.available = self.separator is not None
+
+    def separate(self, audio, sample_rate=44100):
         if not self.available:
-            # 使用备用方法
-            separator = VocalSeparator(sample_rate=sample_rate)
-            vocal, accompaniment = separator.separate(audio)
-            return {
-                'vocals': vocal,
-                'accompaniment': accompaniment
-            }
-        
-        # 使用Spleeter
-        # 需要将音频转换为Spleeter支持的格式
-        # 这里简化处理，实际使用时可能需要保存为临时文件
-        import tempfile
-        import soundfile as sf
-        from spleeter.separator import Separator
-        
-        # 保存临时文件
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
-            temp_input = f.name
-        
-        sf.write(temp_input, audio, sample_rate)
-        
-        # 创建输出目录
-        import tempfile
-        output_dir = tempfile.mkdtemp()
-        
-        # 分离
-        separator = Separator(f'spleeter:{self.model}')
-        separator.separate_to_file(temp_input, output_dir)
-        
-        # 读取结果
-        import os
-        import glob
-        
-        result = {}
-        for stem_file in glob.glob(os.path.join(output_dir, '*.wav')):
-            stem_name = os.path.basename(stem_file).replace('.wav', '')
-            stem_audio, _ = sf.read(stem_file)
-            result[stem_name] = stem_audio
-        
-        # 清理临时文件
-        import shutil
-        os.remove(temp_input)
-        shutil.rmtree(output_dir)
-        
-        return result
-    
-    def extract_vocal(self, audio: np.ndarray, sample_rate: int = 44100) -> np.ndarray:
-        """提取人声"""
-        result = self.separate(audio, sample_rate)
-        return result.get('vocals', audio)
+            raise RuntimeError("当前环境未安装 Spleeter，请安装 spleeter 后重试。")
+        audio = np.asarray(audio, dtype=np.float32)
+        wave = _resample(_stereo(audio), sample_rate, 44100)
+        stems = self.separator.separate(wave)
+        if "vocals" not in stems:
+            raise RuntimeError("Spleeter 没有返回人声轨")
+        return {name: _restore(_mono(track) if audio.ndim == 1 else track,
+                               44100, sample_rate, len(audio)) for name, track in stems.items()}
+
+    def extract_vocal(self, audio, sample_rate=44100):
+        return self.separate(audio, sample_rate)["vocals"]
 
 
-def preprocess_for_transcription(
-    audio: np.ndarray,
-    sample_rate: int = 44100,
-    method: str = "auto"
-) -> np.ndarray:
-    """
-    预处理音频用于扒谱
-    
-    自动选择最佳方法分离人声
-    
-    Args:
-        audio: 输入音频
-        sample_rate: 采样率
-        method: 分离方法 ('auto', 'spleeter', 'hpss', 'spectral')
-        
-    Returns:
-        预处理后的音频 (主要是人声)
-    """
-    if method == "auto":
-        # 检查是否有Spleeter
-        try:
-            import spleeter
-            method = "spleeter"
-        except ImportError:
-            method = "hpss"
-    
+@lru_cache(maxsize=1)
+def _demucs_model():
+    try:
+        from demucs.pretrained import get_model
+    except (ImportError, OSError) as exc:
+        raise RuntimeError("当前环境需要安装可用的 demucs、torch 和 torchaudio。") from exc
+    try:
+        return get_model("htdemucs").cpu().eval()
+    except Exception as exc:
+        raise RuntimeError("无法加载 htdemucs 权重，请检查模型缓存和首次下载连接。") from exc
+
+
+def _neural_stems(audio, rate, method):
     if method == "spleeter":
-        wrapper = SpleeterWrapper()
-        return wrapper.extract_vocal(audio, sample_rate)
-    else:
-        separator = VocalSeparator(sample_rate=sample_rate, method=method)
-        return separator.extract_vocal(audio)
+        return SpleeterWrapper().separate(audio, rate)
+    model = _demucs_model()
+    import torch
+    from demucs.apply import apply_model
+    samples = _resample(_stereo(audio), rate, model.samplerate)
+    wave = torch.from_numpy(np.ascontiguousarray(samples.T))
+    reference = wave.mean(0)
+    scale = reference.std(unbiased=False).clamp_min(1e-8)
+    with torch.inference_mode():
+        prediction = apply_model(model, ((wave - reference.mean()) / scale)[None],
+                                 device="cpu", shifts=0, split=True, progress=False)[0]
+        prediction = prediction * scale + reference.mean()
+    stems = {}
+    for name, track in zip(model.sources, prediction):
+        data = track.numpy().T
+        stems[name] = _restore(_mono(data) if audio.ndim == 1 else data,
+                               model.samplerate, rate, len(audio))
+    stems["accompaniment"] = sum(track for name, track in stems.items() if name != "vocals")
+    return stems
 
 
-# 便捷函数
-def separate_vocal(
-    audio: np.ndarray,
-    sample_rate: int = 44100,
-    use_spleeter: bool = False
-) -> np.ndarray:
-    """
-    快速人声分离
-    
-    Args:
-        audio: 输入音频
-        sample_rate: 采样率
-        use_spleeter: 是否使用Spleeter (需要单独安装)
-        
-    Returns:
-        人声部分
-    """
-    if use_spleeter:
-        wrapper = SpleeterWrapper()
-        return wrapper.extract_vocal(audio, sample_rate)
-    else:
-        separator = VocalSeparator(sample_rate=sample_rate)
-        return separator.extract_vocal(audio)
+def preprocess_for_transcription(audio, sample_rate=44100, method="auto", target="vocals"):
+    """Select a stem first, then return a time-aligned mono transcription signal."""
+    data = np.asarray(audio, dtype=np.float32)
+    if method == "auto":
+        from importlib.util import find_spec
+        method = "spleeter" if find_spec("spleeter") else "hpss"
+    if method in ("demucs", "spleeter"):
+        # Long songs would otherwise retain all separated stems at full length.
+        block = 45 * sample_rate
+        if len(data) > block:
+            margin = 2 * sample_rate
+            output = np.empty(len(data), dtype=np.float32)
+            for start in range(0, len(data), block):
+                end = min(start + block, len(data))
+                left, right = max(0, start-margin), min(len(data), end+margin)
+                stems = _neural_stems(data[left:right], sample_rate, method)
+                if target not in stems:
+                    raise ValueError(f"{method} 不提供音轨 {target}")
+                output[start:end] = _mono(stems[target])[start-left:end-left]
+            return output
+        stems = _neural_stems(data, sample_rate, method)
+        if target not in stems:
+            raise ValueError(f"{method} 不提供音轨 {target}")
+        return _mono(stems[target])
+    if target not in ("vocals", "accompaniment"):
+        raise ValueError("该方法支持前景或背景音轨")
+    lead, backing = VocalSeparator(sample_rate=sample_rate, method=method).separate(data)
+    return lead if target == "vocals" else backing
+
+
+def separate_vocal(audio, sample_rate=44100, use_spleeter=False):
+    method = "spleeter" if use_spleeter else "spectral"
+    return preprocess_for_transcription(audio, sample_rate, method)

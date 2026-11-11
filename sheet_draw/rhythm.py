@@ -106,7 +106,8 @@ class BeatTracker:
         估计BPM (基于自相关)
         """
         # 计算自相关
-        autocorr = np.correlate(onset_env, onset_env, mode='full')
+        from scipy.signal import correlate
+        autocorr = correlate(onset_env, onset_env, mode='full', method='auto')
         autocorr = autocorr[len(autocorr)//2:]
         
         # 转换为lag范围 (对应BPM范围)
@@ -114,7 +115,7 @@ class BeatTracker:
         # lag = 60 * sample_rate / (BPM * hop_length)
         
         lag_max = int(60 * self.sample_rate / (self.tempo_min * self.hop_length))
-        lag_min = int(60 * self.sample_rate / (self.tempo_max * self.hop_length))
+        lag_min = max(1, int(60 * self.sample_rate / (self.tempo_max * self.hop_length)))
         
         lag_max = min(lag_max, len(autocorr) - 1)
         
@@ -132,40 +133,33 @@ class BeatTracker:
         return round(bpm, 1)
     
     def _track_beats(self, onset_env: np.ndarray, bpm: float) -> List[int]:
-        """
-        追踪节拍位置
-        
-        使用动态规划找到最优节拍位置
-        """
-        # 计算理论节拍间隔 (帧)
-        beat_interval = int(60 * self.sample_rate / (bpm * self.hop_length))
-        
-        # 简单的峰值检测方法
-        # 找到onset_env中的周期性峰值
-        
-        # 首先找到所有局部最大值
-        local_max = []
-        for i in range(1, len(onset_env) - 1):
-            if onset_env[i] > onset_env[i-1] and onset_env[i] > onset_env[i+1]:
-                local_max.append((i, onset_env[i]))
-        
-        # 按强度排序
-        local_max.sort(key=lambda x: x[1], reverse=True)
-        
-        # 选择节拍位置 (保持一定的间隔)
+        """Trace a pulse through onset evidence, penalizing abrupt tempo changes."""
+        if not onset_env.size or onset_env.max() <= 0:
+            return []
+        period = max(1., 60 * self.sample_rate / (bpm * self.hop_length))
+        # Silent beats can bridge syncopations; nearby attacks can move the beat.
+        offsets = np.arange(max(1, round(.65 * period)), max(2, round(1.45 * period)) + 1)
+        cost = 5.0 * np.log(offsets / period) ** 2
+        scores = np.zeros(len(onset_env))
+        back = np.full(len(onset_env), -1, dtype=int)
+        for frame, strength in enumerate(onset_env):
+            n = np.searchsorted(offsets, frame, side="right")
+            scores[frame] = strength
+            if n:
+                candidates = scores[frame - offsets[:n]] - cost[:n]
+                index = int(np.argmax(candidates))
+                if candidates[index] > 0:
+                    scores[frame] += candidates[index]
+                    back[frame] = frame - offsets[index]
+        frame = int(np.argmax(scores))
         beats = []
-        tolerance = beat_interval // 4  # 允许的位置偏差
-        
-        for frame, strength in local_max:
-            # 检查是否与已选节拍太接近
-            too_close = any(abs(frame - b) < beat_interval - tolerance for b in beats)
-            if not too_close:
-                beats.append(frame)
-        
-        beats.sort()
-        
-        return beats
-    
+        # Spectral flux frames are centred on a 2048-sample analysis window.
+        centre = round(1024 / self.hop_length)
+        while frame >= 0:
+            beats.append(frame + centre)
+            frame = back[frame]
+        return beats[::-1]
+
     def detect_bpm(self, audio: np.ndarray) -> float:
         """
         只检测BPM

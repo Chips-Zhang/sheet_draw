@@ -3,7 +3,7 @@
 """
 
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import Counter
 
 
@@ -127,6 +127,9 @@ class KeyDetector:
         
         通过计算输入分布与标准关键轮廓的相关性来确定调性
         """
+        if np.ptp(distribution) == 0:
+            return {"key": "C major", "tonic": "C", "mode": "major",
+                    "correlation": 0., "confidence": 0.}
         best_correlation = -1
         best_key = None
         best_mode = None
@@ -134,7 +137,7 @@ class KeyDetector:
         # 测试所有大调
         for tonic in range(12):
             # 旋转轮廓以匹配当前tonic
-            rotated_profile = np.roll(self.MAJOR_PROFILE, -tonic)
+            rotated_profile = np.roll(self.MAJOR_PROFILE, tonic)
             
             # 计算相关性
             correlation = np.corrcoef(distribution, rotated_profile)[0, 1]
@@ -146,7 +149,7 @@ class KeyDetector:
         
         # 测试所有小调
         for tonic in range(12):
-            rotated_profile = np.roll(self.MINOR_PROFILE, -tonic)
+            rotated_profile = np.roll(self.MINOR_PROFILE, tonic)
             
             correlation = np.corrcoef(distribution, rotated_profile)[0, 1]
             

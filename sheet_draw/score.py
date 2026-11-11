@@ -16,6 +16,8 @@ class Note:
     duration: float      # 持续时间 (秒)
     velocity: float = 1.0  # 力度 (0-1)
     
+    pitch_bends: tuple = ()  # Basic Pitch contour offsets in thirds of a semitone
+
     # 可选的计算属性
     @property
     def octave(self) -> int:
@@ -208,32 +210,23 @@ class MidiGenerator:
         tempo_microseconds = int(60_000_000 / self.tempo)
         track.append(MetaMessage('set_tempo', tempo=tempo_microseconds))
         
-        # 按时间排序音符
-        sorted_notes = sorted(self.notes, key=lambda n: n.start_time)
-        
-        # 转换时间到ticks
-        ticks_per_beat = mid.ticks_per_beat
-        
-        current_time = 0
-        for note in sorted_notes:
-            # 计算MIDI note number
-            midi_note = self._freq_to_midi(note.frequency)
-            
-            # 计算delta time (从上一个事件到现在的时间差)
-            note_start_ticks = int(note.start_time * ticks_per_beat * self.tempo / 60)
-            note_duration_ticks = int(note.duration * ticks_per_beat * self.tempo / 60)
-            
-            delta_ticks = note_start_ticks - current_time
-            
-            # Note on
-            velocity = int(note.velocity * 127)
-            track.append(Message('note_on', note=midi_note, velocity=velocity, time=delta_ticks))
-            
-            # Note off
-            track.append(Message('note_off', note=midi_note, velocity=0, time=note_duration_ticks))
-            
-            current_time = note_start_ticks + note_duration_ticks
-        
+        # Quantization can create overlaps. Sort all events on the absolute
+        # timeline before deriving delta ticks (release before the next attack).
+        ticks_per_second = mid.ticks_per_beat * self.tempo / 60
+        events = []
+        for note in self.notes:
+            pitch = self._freq_to_midi(note.frequency)
+            start = round(note.start_time * ticks_per_second)
+            end = max(start + 1, round((note.start_time + note.duration) * ticks_per_second))
+            events.append((start, 1, pitch, int(note.velocity * 127)))
+            events.append((end, 0, pitch, 0))
+
+        previous = 0
+        for tick, attack, pitch, velocity in sorted(events):
+            kind = 'note_on' if attack else 'note_off'
+            track.append(Message(kind, note=pitch, velocity=velocity, time=tick - previous))
+            previous = tick
+
         # 保存文件
         mid.save(filepath)
         print(f"MIDI file saved to: {filepath}")
@@ -353,7 +346,8 @@ class TranscriptionResult:
                     "frequency": n.frequency,
                     "start_time": n.start_time,
                     "duration": n.duration,
-                    "velocity": n.velocity
+                    "velocity": n.velocity,
+                    **({"pitch_bends": list(n.pitch_bends)} if n.pitch_bends else {})
                 }
                 for n in self.notes
             ]
@@ -403,7 +397,7 @@ def quantize_notes(
             frequency=note.frequency,
             start_time=quantized_start,
             duration=quantized_duration,
-            velocity=note.velocity
+            velocity=note.velocity, pitch_bends=note.pitch_bends
         )
         quantized.append(quantized_note)
     

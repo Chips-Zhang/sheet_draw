@@ -12,6 +12,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 
 from .score import Note
+from .audio_utils import frequency_to_note, note_to_frequency
 
 
 @dataclass
@@ -39,12 +40,14 @@ class HarmonicaNote:
         
         # 推键 (半音阶)
         if self.button:
-            parts.append('*')
+            parts.append('↑')
         
         # 压音 (蓝调)
         if self.bend:
             if self.bend == 'half':
                 parts.append("'")
+            elif self.bend == 'three_half':
+                parts.append("'''")
             elif self.bend == 'full':
                 parts.append("''")
         
@@ -61,7 +64,18 @@ class Harmonica:
         Args:
             key: 调性 (如 'C', 'G', 'A')
         """
+        # Standard Richter keys run from G3 through F#4 at hole one.
+        offsets = {"G": -5, "Ab": -4, "A": -3, "Bb": -2, "B": -1,
+                   "C": 0, "Db": 1, "D": 2, "Eb": 3, "E": 4, "F": 5, "F#": 6}
+        aliases = {"G#": "Ab", "A#": "Bb", "C#": "Db", "D#": "Eb", "Gb": "F#"}
+        key = aliases.get(key, key)
+        if key not in offsets:
+            raise ValueError(f"未知口琴调性: {key}")
         self.key = key
+        self.offset = offsets[key]
+
+    def transpose_layout_note(self, name):
+        return frequency_to_note(note_to_frequency(name) * 2 ** (self.offset / 12))
     
     def get_range(self) -> Tuple[float, float]:
         """返回音域范围 (Hz)"""
@@ -86,30 +100,20 @@ class ChromaticHarmonica(Harmonica):
     
     # 12孔半音阶口琴标准布局
     # hole: (吹音, 吸音, 吹音+推键, 吸音+推键)
-    LAYOUT_12 = {
-        1:  ("C4",  "D4",  "C#4", "D#4"),
-        2:  ("E4",  "F4",  "F4",  "F#4"),  # 注意: 2孔吹+E推键=F4
-        3:  ("G4",  "A4",  "G#4", "A#4"),
-        4:  ("C5",  "D5",  "C#5", "D#5"),
-        5:  ("E5",  "F5",  "F5",  "F#5"),
-        6:  ("G5",  "A5",  "G#5", "A#5"),
-        7:  ("C6",  "D6",  "C#6", "D#6"),
-        8:  ("E6",  "F6",  "F6",  "F#6"),
-        9:  ("G6",  "A6",  "G#6", "A#6"),
-        10: ("C7",  "D7",  "C#7", "D#7"),
-        11: ("E7",  "F7",  "F7",  "F#7"),
-        12: ("G7",  "A7",  "G#7", "A#7"),
-    }
-    
-    # 14孔/16孔扩展
+    LAYOUT_12 = {}
+    for octave in range(4, 7):
+        first = 1 + 4 * (octave - 4)
+        LAYOUT_12[first] = (f"C{octave}", f"D{octave}", f"C#{octave}", f"D#{octave}")
+        LAYOUT_12[first+1] = (f"E{octave}", f"F{octave}", f"F{octave}", f"F#{octave}")
+        LAYOUT_12[first+2] = (f"G{octave}", f"A{octave}", f"G#{octave}", f"A#{octave}")
+        LAYOUT_12[first+3] = (f"C{octave+1}", f"B{octave}", f"C#{octave+1}", f"C{octave+1}")
+    LAYOUT_12[12] = ("C7", "B6", "C#7", "D7")
     LAYOUT_16 = {
-        **LAYOUT_12,
-        13: ("C8", "D8", "C#8", "D#8"),
-        14: ("E8", "F8", "F8", "F#8"),
-        15: ("G8", "A8", "G#8", "A#8"),
-        16: ("C9", None, "C#9", None),
+        1: ("C3", "D3", "C#3", "D#3"), 2: ("E3", "F3", "F3", "F#3"),
+        3: ("G3", "A3", "G#3", "A#3"), 4: ("C4", "B3", "C#4", "C4"),
+        **{hole + 4: notes for hole, notes in LAYOUT_12.items()},
     }
-    
+
     def __init__(self, key: str = "C", holes: int = 12):
         """
         初始化半音阶口琴
@@ -120,14 +124,16 @@ class ChromaticHarmonica(Harmonica):
         """
         super().__init__(key)
         self.holes = holes
-        self.layout = self.LAYOUT_16 if holes >= 16 else self.LAYOUT_12
+        layout = self.LAYOUT_16 if holes >= 16 else self.LAYOUT_12
+        self.layout = {h: tuple(self.transpose_layout_note(n) for n in row)
+                       for h, row in layout.items()}
         
         # 计算音域
-        self._min_freq = self._note_to_freq("C4")
-        self._max_freq = self._note_to_freq("C9" if holes >= 16 else "D7")
+        self._min_freq = self._note_to_freq("C3" if holes >= 16 else "C4")
+        self._max_freq = self._note_to_freq("D7")
     
     def get_range(self) -> Tuple[float, float]:
-        return (self._min_freq, self._max_freq)
+        return (self._min_freq * 2 ** (self.offset / 12), self._max_freq * 2 ** (self.offset / 12))
     
     def note_to_hole(self, note: str) -> Optional[HarmonicaNote]:
         """
@@ -207,30 +213,32 @@ class DiatonicHarmonica(Harmonica):
     """
     十孔蓝调口琴 (Richter调音)
     
-    标准10孔蓝调口琴音域: C4 - D7
+    标准 C 调十孔蓝调口琴音域: C4 - C7
     """
     
     # Richter调音布局
-    # hole: (吹音, 吸音, 吸气压音)
+    # hole: (吹音, 吸音, 压音音高，从半音起)
     RICHTER_LAYOUT = {
-        1:  ("C4",  "D4",  ["C#4", "C4"]),     # 1孔: 吹C, 吸D, 压音C#, C
+        1:  ("C4",  "D4",  ["C#4"]),     # 1孔: 吸气压低半音
         2:  ("E4",  "G4",  ["F#4", "F4"]),     # 2孔: 吹E, 吸G, 压音F#, F
         3:  ("G4",  "B4",  ["A#4", "A4", "G#4"]), # 3孔: 吹G, 吸B, 压音A#, A, G#
         4:  ("C5",  "D5",  ["C#5"]),           # 4孔: 吹C, 吸D, 压音C#
         5:  ("E5",  "F5",  []),                # 5孔: 吹E, 吸F, 无压音
         6:  ("G5",  "A5",  ["G#5"]),           # 6孔: 吹G, 吸A, 压音G#
         7:  ("C6",  "B5",  []),                # 7孔: 吹C, 吸B, 无压音
-        8:  ("E6",  "D6",  ["C#6", "C6"]),     # 8孔: 吹E, 吸D, 压音(超吹)
-        9:  ("G6",  "F6",  ["F#6"]),           # 9孔: 吹G, 吸F, 压音(超吹)
-        10: ("C7",  "A6",  ["G#6", "G6"]),     # 10孔: 吹C, 吸A, 压音(超吹)
+        8:  ("E6",  "D6",  ["D#6"]),     # 8孔: 吹E, 吸D, 吹气压音
+        9:  ("G6",  "F6",  ["F#6"]),           # 9孔: 吹G, 吸F, 吹气压音
+        10: ("C7",  "A6",  ["B6", "A#6"]),     # 10孔: 吹C, 吸A, 吹气压音
     }
     
     def __init__(self, key: str = "C"):
         super().__init__(key)
-        self.layout = self.RICHTER_LAYOUT
+        self.layout = {h: (self.transpose_layout_note(b), self.transpose_layout_note(d),
+                           [self.transpose_layout_note(n) for n in bends])
+                       for h, (b, d, bends) in self.RICHTER_LAYOUT.items()}
     
     def get_range(self) -> Tuple[float, float]:
-        return (self._note_to_freq("C4"), self._note_to_freq("C7"))
+        return (self._note_to_freq(self.layout[1][0]), self._note_to_freq(self.layout[10][0]))
     
     def note_to_hole(self, note: str) -> Optional[HarmonicaNote]:
         """将音符转换为孔位"""
@@ -249,12 +257,9 @@ class DiatonicHarmonica(Harmonica):
                 )
             elif note in bends:
                 bend_idx = bends.index(note)
-                if bend_idx == 0:
-                    bend_type = 'half'
-                else:
-                    bend_type = 'full'
+                bend_type = ("half", "full", "three_half")[bend_idx]
                 return HarmonicaNote(
-                    note=None, hole=hole, action='draw',
+                    note=None, hole=hole, action='draw' if hole <= 6 else 'blow',
                     bend=bend_type, button=False
                 )
         
@@ -291,6 +296,18 @@ class DiatonicHarmonica(Harmonica):
         return 440.0 * (2 ** ((midi_num - 69) / 12))
 
 
+class PaddyHarmonica(DiatonicHarmonica):
+    """Paddy Richter raises the third blow reed by a whole tone."""
+    RICHTER_LAYOUT = {**DiatonicHarmonica.RICHTER_LAYOUT, 3: ("A4", "B4", ["A#4"])}
+
+
+def make_harp(instrument, key):
+    classes = {"paddy": PaddyHarmonica, "chromatic": ChromaticHarmonica, "diatonic": DiatonicHarmonica}
+    if instrument not in classes:
+        raise ValueError("未知口琴类型")
+    return classes[instrument](key)
+
+
 class HarmonicaScoreGenerator:
     """口琴曲谱生成器"""
     
@@ -324,8 +341,8 @@ class HarmonicaScoreGenerator:
         if isinstance(self.harmonica, ChromaticHarmonica):
             lines.append("  数字 = 吹 (如 '4')")
             lines.append("  数字- = 吸 (如 '4-')")
-            lines.append("  数字* = 推键吹 (如 '4*')")
-            lines.append("  数字-* = 推键吸 (如 '4-*')")
+            lines.append("  数字↑ = 推键吹 (如 '4↑')")
+            lines.append("  数字-↑ = 推键吸 (如 '4-↑')")
         else:  # Diatonic
             lines.append("  数字 = 吹 (如 '4')")
             lines.append("  数字- = 吸 (如 '4-')")

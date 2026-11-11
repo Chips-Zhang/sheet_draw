@@ -1,146 +1,33 @@
-# Sheet Draw - 扒谱功能扩展规划
+# 转谱实现与验证
 
-## 目标功能
-从流行歌曲音频中自动分析音调唱名，划分节奏，输出曲谱。
+项目提供一条从音频到五线谱和吹吸谱的本地路径。安装基础依赖可用单音追踪和信号处理；安装可选依赖后，同一页面可使用神经网络识别及分离。
 
-## 需要扩展的能力
+| 能力 | 已接入的路径 | 如何核对 |
+|---|---|---|
+| 多音识别 | 单音追踪、Basic Pitch 主旋律、可演奏双音、原始多音。双音在同向吹吸、按键状态一致的相邻孔中选伴音；原始模式展示额外声部，未知组合标问号。C、G、降 B 调独立映射。 | 对照各模式的逐曲起音、收音 F1、重叠音召回和多报。测试覆盖同一音高的替代孔位及错开收音。 |
+| 模型选择 | 本地 ONNX 推理，保留原始音符和弯音序列。用固定开发曲目比较阈值与最短时长，再在分曲留出集上评估。 | 运行 benchmarks/neural_profiles.py 对应的模块命令；检查被选中的参数与模型官方默认配置。 |
+| 分离预处理 | 保留声道直到分离完成；中央声像、REPET、HPSS、频谱减法，以及可选的 Demucs 与 Spleeter。可选原音、前景或神经网络目标声部。 | 在同一配对混音上测转谱 F1、分离 SNR，并核对长度和时间轴。实际表现依赖乐器声像和编配。[分离实验](benchmarks/SEPARATION.md) |
+| 复杂节奏 | 动态规划追踪节拍，按局部拍距映射音符时间；手填 BPM 时使用固定速度。支持指定首个强拍、逐拍选择二进或三连音网格、休止、切分和跨小节延音。 | 用预先知道音符和时值的乐句核对 ABC；对实录另外计算谱面量化后的事件 F1。 |
+| 五线谱图像 | 同一套 ABC 数据供网页和 CLI 使用，网页可试听原录音、打印、下载含全部谱行的 SVG 或 PNG。 | 浏览器上传多音样本，核对五线谱、吹吸标签、谱行数及导出尺寸。 |
 
-### 1. 🎵 音符分割 (Onset Detection)
-- **作用**: 检测每个音符开始的时间点
-- **算法**: 
-  - 频域差异法 (Spectral Flux)
-  - 相位偏差法 (Phase Deviation)
-  - 复合 onset 检测
-- **难点**: 处理连音、滑音、音符边界模糊
+## 使用
 
-### 2. 🎼 音高追踪 (Pitch Tracking)
-- **作用**: 连续跟踪音高变化
-- **当前**: 已有基础，需增强
-- **改进**:
-  - 处理滑音 (glissando)
-  - 处理颤音 (vibrato)
-  - 去除伪音/噪音
-  - 音高平滑处理
+在已验证的 Python 3.9 环境，从项目根目录执行。分离模型首次使用需要能够取得权重。
 
-### 3. 🥁 节奏分析 (Rhythm Analysis)
-- **作用**: 检测节拍和速度
-- **能力**:
-  - BPM 检测 (每分钟节拍数)
-  - 节拍位置检测 (Beat Tracking)
-  - 强拍/弱拍识别
-  - 拍号识别 (4/4, 3/4等)
-- **算法**: 
-  -  onset 自相关
-  - 动态规划节拍追踪
-
-### 4. 🎹 调性检测 (Key Detection)
-- **作用**: 确定歌曲的调性
-- **输出**: 
-  - 调性 (C大调、A小调等)
-  - 音阶
-  - 临时变音标记
-- **算法**: 
-  - Krumhansl-Schmuckler 调性检测
-  - 音级分布分析
-
-### 5. ⏱️ 音符量化 (Note Quantization)
-- **作用**: 将检测到的音高对齐到标准音符
-- **处理**:
-  - 音准偏差修正
-  - 时值量化 (四分音符、八分音符等)
-  - 休止符识别
-
-### 6. 🎸 多声部分离 (可选)
-- **作用**: 分离人声和伴奏
-- **算法**: 
-  - Spleeter (深度学习)
-  - 频谱减法
-- **用途**: 扒谱通常只需要主旋律
-
-### 7. 📄 曲谱生成
-- **输出格式**:
-  - MIDI 文件 (可导入DAW)
-  - MusicXML (专业制谱软件)
-  - 简谱 (文本格式)
-  - 五线谱 (图像/PDF)
-
-## 技术实现建议
-
-### 推荐库
-```python
-# 核心音频处理
-librosa          # 音频分析、onset检测、节拍追踪
-madmom           # 音乐信息检索 (beat tracking)
-aubio            # 音高和onset检测
-
-# 调性检测
-music21          # 音乐理论、调性分析
-
-# 曲谱生成
-mido             # MIDI生成
-musicxml         # MusicXML生成
-
-# 人声分离 (可选)
-spleeter         # 音轨分离
+```sh
+python -m pip install -e '.[neural,separation]'
+python -m sheet_draw.web
 ```
 
-### 处理流程
+默认地址为 http://127.0.0.1:8765 。可用 `--port` 指定其他端口。命令行可直接生成同一份组合谱的 ABC 文件：
 
-```
-输入音频
-   ↓
-[预处理] - 降噪、归一化、人声分离(可选)
-   ↓
-[Onset检测] - 找到所有音符开始点
-   ↓
-[Beat检测] - 确定节拍位置和BPM
-   ↓
-[音高检测] - 对每个音符检测音高
-   ↓
-[调性分析] - 确定调性，计算唱名
-   ↓
-[量化] - 音高和时值标准化
-   ↓
-[曲谱生成] - 输出MIDI/简谱/MusicXML
+```sh
+sheet-draw transcribe recording.wav --engine basic-pitch-duet --harmonica-type diatonic --harmonica-key Bb --meter 2 --subdivision auto -o abc --output-file result.abc
 ```
 
-## 实现优先级
+## 复核与后续判断
 
-### Phase 1: 核心功能 (MVP)
-1. ✅ 音高检测 (已有)
-2. 🔄 Onset检测
-3. 🔄 Beat检测 (BPM)
-4. 📝 简谱文本输出
-
-### Phase 2: 增强功能
-5. 调性检测
-6. 时值量化
-7. MIDI输出
-
-### Phase 3: 高级功能
-8. 人声分离
-9. MusicXML输出
-10. 五线谱图像生成
-
-## 相似开源项目
-
-| 项目 | 链接 | 特点 |
-|------|------|------|
-| **Basic Pitch** | spotify/basic-pitch | Spotify的轻量级扒谱工具 |
-| **piano-transcription** | bytedance/piano-transcription | 字节跳动的钢琴转录 |
-| ** omnizart** | Music-and-Culture-Technology-Lab/omnizart | 多乐器音乐转录 |
-| **AutoPiano** | AutoPiano | 自动钢琴转录 |
-| ** anthemscore** | 商业软件 | 流行的自动扒谱软件 |
-
-## 快速开始建议
-
-对于流行歌曲扒谱，推荐先集成 **Basic Pitch** (Spotify开源)：
-- 轻量级，基于深度学习
-- 直接输出音高和onset
-- 效果比传统算法好
-
-```bash
-pip install basic-pitch
-```
-
-然后在其基础上添加节奏分析和曲谱生成功能。
+1. 运行 `python -m pytest -q` 检查现有与新增回归用例。运行 `python -m benchmarks.evaluate --basic-pitch` 复测合成音阶、带休止或特殊节奏的旋律和实录单音。
+2. 运行 `python scripts/compare_performances.py /tmp/harp-eval --json results.json` 复测有作者标注的完整演奏；首次下载，此后核验缓存。[分组和逐曲评测](benchmarks/README.md)
+3. 运行 `python -m benchmarks.neural_profiles /tmp/harp-eval` 比较开发集解码配置。识别输出与量化后的谱面分别计分，公开样例与留出曲目分开报告。
+4. 实录中尚有漏音。若原始多音已经漏音，可针对弱音、压音或和弦密集段补充训练与验证数据；若原始事件正确、谱面时值仍错，应优先改进强拍和网格估计。口琴独奏、人声改编与混音中的口琴需要分别评测。[初版逐曲对照](docs/TRANSCRIPTION_EVALUATION.md)
